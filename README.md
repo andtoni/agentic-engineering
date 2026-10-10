@@ -33,7 +33,7 @@ Agents write the code; the controls decide what reaches the main branch.
 When I prepared two of these codebases for publication, an audit found real personal data in test
 fixtures and commit messages. Tests written from live data had copied it in. The controls above did not
 catch this, because they check for secrets and vulnerabilities, not for personal data. The public copies
-are therefore clean single-commit exports that pass a separate leak check before each update.
+are therefore cleaned exports, with that data replaced, that pass a separate leak check before each update.
 
 ## Public code
 
