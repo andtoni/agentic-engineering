@@ -1,0 +1,80 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Account workstream dependency policy: weekly, grouped by ecosystem, non-major updates auto-merge once required passes",
+  "extends": ["config:best-practices"],
+  "dependencyDashboard": true,
+  "labels": ["dependencies", "renovate"],
+  "timezone": "Africa/Johannesburg",
+  "schedule": ["* * * * 6"],
+  "branchConcurrentLimit": 3,
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "rangeStrategy": "pin",
+  "rebaseWhen": "conflicted",
+  "automerge": false,
+  "platformAutomerge": true,
+  "automergeType": "pr",
+  "packageRules": [
+    {
+      "description": "One pull request per ecosystem for everything below a major version",
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
+      "groupName": "non-major dependencies"
+    },
+    {
+      "matchCategories": ["js", "node"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
+      "groupName": "npm non-major"
+    },
+    {
+      "matchCategories": ["python"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
+      "groupName": "python non-major"
+    },
+    {
+      "matchCategories": ["rust"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
+      "groupName": "rust non-major"
+    },
+    {
+      "matchCategories": ["docker"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
+      "groupName": "docker non-major"
+    },
+    {
+      "matchCategories": ["ci"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
+      "groupName": "ci non-major"
+    },
+    {
+      "description": "Auto-merge non-major application dependencies; CI supply-chain updates stay explicit",
+      "matchCategories": ["js", "node", "python", "rust", "docker"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Auto-merge weekly lock file maintenance",
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "automerge": true
+    },
+    {
+      "description": "uv.lock pins Python dependencies; keep pyproject ranges",
+      "matchManagers": ["pep621"],
+      "rangeStrategy": "update-lockfile"
+    },
+    {
+      "description": "The digest-pinned lane image owns the Python interpreter; requires-python and .python-version change only with it",
+      "matchDepTypes": ["requires-python"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["pyenv"],
+      "enabled": false
+    },
+    {
+      "description": "Dashboard-gate major updates",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "automerge": false
+    }
+  ]
+}

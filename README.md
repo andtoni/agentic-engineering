@@ -1,46 +1,88 @@
 # How I build software with AI coding agents
 
 I am a physician and PhD candidate, not a career software engineer. Since July 2026 I have built and run
-several production systems by directing AI coding agents (Claude Code, Codex and Pi) under a fixed set of
-controls. Most of that work is in private repositories, because it runs my own infrastructure and
-finances. This page describes the method and points to the parts that are public.
+several production systems by directing AI coding agents (Claude Code, Codex and Pi). I decide what gets
+built, set the controls and verify the result; the agents write the code. Most of the work is in private
+repositories, because it runs my own infrastructure, finances and documents. This page describes the
+method, shows the controls as real files, and points to the parts that are public.
 
 ## The numbers
 
-Measured on 10 October 2026 across my GitHub account:
+Measured on 3 November 2026 with GitHub search across my account:
 
 | | |
 |---|---|
-| Merged pull requests | 1,061 across 12 private repositories |
-| Largest codebase | about 190,000 lines of TypeScript with 394 test files |
-| Infrastructure | one homelab defined as code, 744 commits |
+| Merged pull requests | 1,546 across 12 repositories (1,343 excluding Renovate dependency updates) |
+| Since 10 October 2026 | about 500 merged pull requests |
+| Infrastructure as code | one homelab repository with 1,109 commits and 74 Ansible playbooks |
+| Evidence kept | 147 dated operations receipts and 177 recorded decisions in that repository |
+
+## What runs on it
+
+- **A self-hosted platform:** one GPU server running about 15 services (Proxmox, TrueNAS, Coolify, Caddy,
+  Tailscale), defined in Ansible and OpenTofu, with secrets in Infisical and layered offsite backups.
+- **Finance:** a service that reconciles bank and brokerage data from six US and South African
+  institutions into a household ledger, and a fork of an open-source portfolio app on top of it.
+- **Local document AI:** scanned household records are read on the server's own GPU and filed
+  automatically, without sending documents to a cloud OCR service.
+- **The Briefing:** a twice-daily personal newspaper. Claude selects, summarises and sections feeds and
+  newsletters, and the edition is delivered as HTML, PDF and a Kindle EPUB.
+- **Research code:** the open-source pore-network pipeline behind my *Materials Today Bio* paper, and
+  deep-learning super-resolution for micro-CT.
 
 ## The controls
 
-Agents write the code; the controls decide what reaches the main branch.
+Agents write the code; the controls decide what reaches the main branch. The files in
+[`controls/`](controls/) are the account templates every repository starts from.
 
 - **Every change is a pull request.** The main branch of each repository is protected by a ruleset.
-- **One required CI job** runs formatting, lint and type checks, the tests affected by the change, a
-  Trivy scan and a Zizmor audit of the workflows.
-- **Semgrep** scans every repository.
-- **An automatic AI code review** (Codex) comments on each pull request. It is advisory; the CI job is
-  the gate.
-- **Renovate** proposes dependency updates as ordinary pull requests through the same gate.
-- **One account-level policy** defines these rules, so a new repository starts with them.
+- **One required CI job** ([`ci-required.yml`](controls/ci-required.yml)) checks out the trusted base
+  and the proposed revision separately, runs the repository's own lint, type checks and tests for the
+  paths that changed, and audits the workflows with zizmor. Trivy and Semgrep scan every repository.
+  The composite action it calls is not included here.
+- **An AI review must post before merge** ([`claude-review.yml`](controls/claude-review.yml)). Claude
+  reviews each pull request against the rules in the *base* branch's `AGENTS.md`, so a pull request
+  cannot rewrite the standard it is judged by. The review is advisory; the CI job is the gate, and every
+  finding is fixed or answered before merge.
+- **Every repository states its rules for agents** ([`AGENTS.template.md`](controls/AGENTS.template.md)):
+  what to read first, what never goes into Git, and how decisions are recorded.
+- **Dependencies update through the same gate** ([`renovate-preset.json`](controls/renovate-preset.json)):
+  Renovate opens ordinary pull requests, and actions and images are pinned by digest.
+- **Releases are signed.** My own apps and automation jobs are built into container images, signed
+  with cosign and deployed only by pinned digest.
 
-## What went wrong
+## Three things that happened
 
-When I prepared two of these codebases for publication, an audit found real personal data in test
-fixtures and commit messages. Tests written from live data had copied it in. The controls above did not
-catch this, because they check for secrets and vulnerabilities, not for personal data. The public copies
-are therefore cleaned exports, with that data replaced, that pass a separate leak check before each update.
+**Personal data in test fixtures.** When I prepared two codebases for publication, an audit found real
+personal data in test fixtures and commit messages: tests written from live data had copied it in. The
+controls above did not catch it, because they look for secrets and vulnerabilities, not personal data.
+The public copies are therefore regenerated by a scripted export that replaces that data. Every update
+must pass a separate leak check (a private-string denylist and gitleaks over the full history) and a
+line-by-line review of the new history before it is published. The November refresh found more:
+real bank names and a payment line in new fixtures, now replaced.
+
+**Choosing a local OCR model by measurement.** To read scanned documents on my own GPU instead of a
+cloud service, I compared three open models on the same 10 documents and 175 checked fields.
+LightOnOCR missed 2 fields, PaddleOCR-VL 18 and GLM-OCR 44. LightOnOCR takes a median of 6.7 seconds a
+page inside a 4 GiB GPU allowance, loads on demand and unloads after 10 idle minutes.
+
+**A server that froze instead of failing.** The machine that runs my agent sessions froze one morning:
+memory ran out, swap filled, and nothing was killed. The fix went through a pull request like any other
+change. It made the kernel's memory-pressure killer (systemd-oomd) responsible for that workload, put
+each agent-launched browser in its own unit so it can be killed without the session that started it,
+and removed a memory throttle that stalled the system instead of freeing it.
 
 ## Public code
 
-- [finance-sync-core](https://github.com/andtoni/finance-sync-core): the reconciliation core of the
-  largest system. It records bank and brokerage data as immutable facts and delivers changes with a
-  receipt for every write (TypeScript, PostgreSQL, about 500 tests).
-- [wealthfolio-fork](https://github.com/andtoni/wealthfolio-fork): my fork of the open-source portfolio
-  tracker, extended with bank-fed spending and configurable budget cycles (Rust, TypeScript).
+Repositories marked *public mirror* are sanitised copies of private repositories, regenerated by the
+export described above.
+
 - [growth-tunnel-analysis](https://github.com/andtoni/growth-tunnel-analysis): the pore-network analysis
-  pipeline behind my *Materials Today Bio* paper (Python).
+  pipeline behind my *Materials Today Bio* paper (Python, PoreSpy, OpenPNM).
+- [microct-superresolution](https://github.com/andtoni/microct-superresolution): deep-learning
+  super-resolution and segmentation for micro-CT of porous scaffolds (public mirror).
+- [briefing](https://github.com/andtoni/briefing): the twice-daily newspaper (public mirror).
+- [finance-sync-core](https://github.com/andtoni/finance-sync-core): the reconciliation core of the
+  finance service (TypeScript, PostgreSQL, about 500 tests; public mirror).
+- [wealthfolio-fork](https://github.com/andtoni/wealthfolio-fork): my fork of the open-source portfolio
+  tracker, with bank-fed spending, budgets and category suggestions (Rust, TypeScript; public mirror).
